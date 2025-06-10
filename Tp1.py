@@ -18,16 +18,13 @@ HEADERS = {
 }
 
 def init_mongodb() -> MongoClient:
-    """Initialise la connexion MongoDB"""
     client = MongoClient(MONGODB_URI)
     return client[DB_NAME][COLLECTION_NAME]
 
 def clean_text(text: Optional[str]) -> Optional[str]:
-    """Nettoie le texte en supprimant les espaces superflus"""
     return ' '.join(text.strip().split()) if text else None
 
 def parse_date(date_str: Optional[str]) -> Optional[str]:
-    """Convertit une date française en format YYYYMMDD"""
     if not date_str:
         return None
     
@@ -49,7 +46,6 @@ def parse_date(date_str: Optional[str]) -> Optional[str]:
     return None
 
 def fetch_article_content(url: str) -> Tuple[Optional[str], Dict[str, str], Optional[str]]:
-    """Récupère le contenu détaillé d'un article"""
     try:
         response = requests.get(url, headers=HEADERS)
         response.raise_for_status()
@@ -82,7 +78,6 @@ def fetch_article_content(url: str) -> Tuple[Optional[str], Dict[str, str], Opti
         return None, {}, None
 
 def fetch_articles(url: str) -> List[Dict]:
-    """Récupère les articles de la page principale"""
     collection = init_mongodb()
     articles_data = []
     
@@ -128,7 +123,6 @@ def fetch_articles(url: str) -> List[Dict]:
     return articles_data
 
 def extract_article_data(article: BeautifulSoup) -> Optional[Dict]:
-    """Extrait les données d'un article"""
     try:
         title_link = article.select_one('.post-title a, h2 a, article-title a, .entry-title a')
         if not title_link:
