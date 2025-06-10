@@ -5,16 +5,13 @@ from datetime import datetime
 import logging
 from typing import Dict, List, Tuple, Optional
 
-# Configuration du logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Configuration MongoDB
-MONGODB_URI = "mongodb+srv://Aragon07:Crystalys12@ipssi.xvoyfn7.mongodb.net/"
-DB_NAME = "scraping"
-COLLECTION_NAME = "articles"
+MONGODB_URI = ""
+DB_NAME = ""
+COLLECTION_NAME = ""
 
-# Configuration du scraping
 BASE_URL = "https://www.blogdumoderateur.com"
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -58,9 +55,7 @@ def fetch_article_content(url: str) -> Tuple[Optional[str], Dict[str, str], Opti
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Extraction de l'auteur
         author = None
-        # Chercher l'auteur dans des éléments plus spécifiques
         author_tag = soup.select_one('.author a, .meta-author a, .byline a, .entry-meta a')
         if author_tag:
             author = clean_text(author_tag.get_text())
@@ -71,14 +66,10 @@ def fetch_article_content(url: str) -> Tuple[Optional[str], Dict[str, str], Opti
         content_div = soup.find('div', class_='entry-content')
         if not content_div:
             return None, {}, author
-        
-        # Extraction du contenu
         content = ' '.join([
             p.get_text().strip() 
             for p in content_div.find_all(['p', 'h2', 'h3'])
         ])
-        
-        # Extraction des images
         images = {
             img.get('src') or img.get('data-lazy-src'): img.get('alt', '')
             for img in content_div.find_all('img')
@@ -101,13 +92,9 @@ def fetch_articles(url: str) -> List[Dict]:
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Supprimer la div à ignorer
         ignore_div = soup.select_one('div.container-fluid.px-md-8.pt-md-7.pt-5.pb-md-4.pb-1')
         if ignore_div:
-            ignore_div.decompose()  # Supprime cette section du DOM
-        
-        # Trouver tous les articles restants
+            ignore_div.decompose()
         articles = soup.find_all('article')
         logger.info(f"Nombre d'articles trouvés : {len(articles)}")
         
@@ -143,15 +130,11 @@ def fetch_articles(url: str) -> List[Dict]:
 def extract_article_data(article: BeautifulSoup) -> Optional[Dict]:
     """Extrait les données d'un article"""
     try:
-        # Essayons d'abord le sélecteur principal
         title_link = article.select_one('.post-title a, h2 a, article-title a, .entry-title a')
-        
-        # Si pas de titre trouvé, utilisons le titre alternatif
         if not title_link:
             possible_title = article.find(['h2', 'h3', 'h4'])
             if possible_title:
                 logger.info(f"Utilisation du titre alternatif: {possible_title.get_text()}")
-                # Cherchons le lien parent ou enfant le plus proche
                 title_link = possible_title.find('a') or possible_title.find_parent('a')
                 if not title_link:
                     logger.warning("Pas de lien trouvé pour le titre alternatif")
@@ -159,8 +142,6 @@ def extract_article_data(article: BeautifulSoup) -> Optional[Dict]:
             else:
                 logger.warning("Aucun titre trouvé")
                 return None
-            
-        # Extraction de l'URL
         url = title_link.get('href', '')
         if not url.startswith('http'):
             url = url if url.startswith('/') else f"/{url}"
@@ -174,7 +155,7 @@ def extract_article_data(article: BeautifulSoup) -> Optional[Dict]:
             'url': url,
             'thumbnail': extract_thumbnail(article),
             'category': extract_category(article),
-            'resume': extract_excerpt(article),  # Changé de 'excerpt' à 'resume'
+            'resume': extract_excerpt(article),
             'publication_date': extract_date(article),
             'author': extract_author(article)
         }
@@ -191,7 +172,7 @@ def extract_thumbnail(article: BeautifulSoup) -> Optional[str]:
 
 def extract_category(article: BeautifulSoup) -> Optional[str]:
     """Extrait la catégorie"""
-    category_tag = article.select_one('span.favtag.color-b')  # Modification du sélecteur
+    category_tag = article.select_one('span.favtag.color-b')
     return clean_text(category_tag.get_text()) if category_tag else None
 
 def extract_excerpt(article: BeautifulSoup) -> Optional[str]:
@@ -245,18 +226,12 @@ if __name__ == "__main__":
         logger.info("Début du scraping...")
         base_url = "https://www.blogdumoderateur.com/web"
         all_articles = []
-        
-        # Parcourir les pages de 1 à 5 (vous pouvez ajuster le nombre de pages)
         for page in range(1, 6):
             logger.info(f"\nTraitement de la page {page}")
-            
-            # Construire l'URL de la page
             if page == 1:
                 page_url = base_url + "/"
             else:
                 page_url = f"{base_url}/page/{page}/"
-                
-            # Récupérer les articles de la page courante
             articles = fetch_articles(page_url)
             if articles:
                 all_articles.extend(articles)
@@ -264,7 +239,7 @@ if __name__ == "__main__":
                 logger.info(f"Total d'articles récupérés: {len(all_articles)}")
             else:
                 logger.warning(f"Aucun article trouvé sur la page {page}")
-                break  # Arrêter si une page est vide (fin du site atteinte)
+                break 
             
         logger.info(f"\nNombre total d'articles récupérés : {len(all_articles)}")
         
